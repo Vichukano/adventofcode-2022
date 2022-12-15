@@ -40,7 +40,50 @@ fn score_second(path: impl Into<String>) -> u32 {
     let content = fs::read_to_string(file_path.as_str())
         .expect(format!("Failed to read file from path: {}", file_path).as_str());
     let lines: Vec<&str> = content.split("\r\n").collect();
-    5
+    let mut for_split = lines.into_iter().peekable();
+    let mut chanks: Vec<Vec<&str>> = Vec::new();
+    while for_split.peek().is_some() {
+        let chunk: Vec<&str> = for_split.by_ref().take(3).collect();
+        println!("{:?}", chunk);
+        chanks.push(chunk);
+    }
+    let dic = dictionary();
+    let score = chanks
+        .iter()
+        .map(|c| {
+            let chunk = c;
+            let f: HashSet<char> = String::from(*chunk.get(0).unwrap())
+                .chars()
+                .into_iter()
+                .collect();
+            let s: HashSet<char> = String::from(*chunk.get(1).unwrap())
+                .chars()
+                .into_iter()
+                .collect();
+            let t: HashSet<char> = String::from(*chunk.get(2).unwrap())
+                .chars()
+                .into_iter()
+                .collect();
+            let mut first_intersection: HashSet<char> = HashSet::new();
+            let mut second_intersection: HashSet<char> = HashSet::new();
+            for x in f.intersection(&s) {
+                println!("Intersection 1: {}", x);
+                first_intersection.insert(x.to_owned());
+            }
+            for y in f.intersection(&t) {
+                println!("Intersection 2: {}", y);
+                second_intersection.insert(y.to_owned());
+            }
+            let mut fin: Vec<char> = Vec::new();
+            for z in first_intersection.intersection(&second_intersection) {
+                println!("Intersection 3: {}", z);
+                fin.push(z.to_owned());
+            }
+            let score = dic.get(fin.get(0).unwrap()).unwrap();
+            score.to_owned()
+        })
+        .fold(0, |acc, x| acc + x);
+    score
 }
 
 fn split_string_into_chunks(str: impl Into<String>) -> (String, String) {
@@ -124,11 +167,19 @@ fn dictionary() -> HashMap<char, u32> {
 
 #[cfg(test)]
 mod tests {
+    use crate::rucksacks_3::score_second;
+
     use super::calculate_priority;
 
     #[test]
     fn calculate_priority_test() {
         let score = calculate_priority("resources/3-rucksacks.txt");
         assert_eq!(8039, score);
+    }
+
+    #[test]
+    fn score_second_test() {
+        let score = score_second("resources/3-rucksacks.txt");
+        assert_eq!(2510, score);
     }
 }
