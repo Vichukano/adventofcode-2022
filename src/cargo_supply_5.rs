@@ -59,12 +59,13 @@ fn move_stacks_9001(from: &mut Vec<char>, to: &mut Vec<char>, count: u32) {
     println!("From: {:#?}", from);
     println!("To: {:#?}", to);
     println!("Count: {}", count);
-    let val: Vec<char> = from.iter().take(count as usize).map(|s|s.to_owned()).collect();
-    
+    let mut tmp = Vec::new();    
     for _ in 0..count {
         let val = from.pop().unwrap();
-        to.push(val);
+        tmp.push(val);
     }
+    tmp.reverse();
+    to.append(&mut tmp);
     println!("After move");
     println!("From: {:#?}", from);
     println!("To: {:#?}", to);
@@ -98,7 +99,7 @@ fn crates_on_top() -> String {
         let to = d.get(2).unwrap();
         let mut f = stack_map.remove(from).unwrap();
         let mut t = stack_map.remove(to).unwrap();
-        move_stacks(&mut f, &mut t, *count);
+        move_stacks_9001(&mut f, &mut t, *count);
         stack_map.insert(from.to_owned(), f);
         stack_map.insert(to.to_owned(), t);
     }
