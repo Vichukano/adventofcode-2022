@@ -123,8 +123,8 @@ mod tests {
     }
 
     #[test]
-    fn crates_on_top_test() {
+    fn crates_on_top_test_2() {
         let top = crates_on_top();
-        assert_eq!(top, "WSFTMRHPP");
+        assert_eq!(top, "SFTMRHPP");
     }
 }
