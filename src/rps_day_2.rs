@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //A X - rock - 1
 //B Y - paper - 2
 //C Z -scissors - 3
