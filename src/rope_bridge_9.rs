@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::fs;
+use std::{collections::HashSet, fs};
 
 struct Rope {
     head: Head,
@@ -9,17 +9,25 @@ struct Rope {
 
 struct Tail {
     position: Position,
+    prevs: HashSet<Position>,
+    moves: i32,
 }
 
 impl Tail {
     fn new() -> Self {
-        Tail {
+        let mut tail = Tail {
             position: Position { x: 0, y: 0 },
-        }
+            prevs: HashSet::new(),
+            moves: 0,
+        };
+        tail.prevs.insert(tail.position);
+        tail
     }
 
     fn change_position(&mut self, position: Position) {
-        self.position = position;
+        let new_pos = position;
+        self.position = new_pos;
+        self.prevs.insert(new_pos);
     }
 }
 
@@ -43,7 +51,7 @@ impl Head {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct Position {
     x: i32,
     y: i32,
@@ -52,6 +60,22 @@ struct Position {
 impl Position {
     fn new(x: i32, y: i32) -> Self {
         Position { x, y }
+    }
+
+    fn count_moves(&self, other: &Position) -> i32 {
+        let cur_x = self.x;
+        let cur_y = self.y;
+        let new_x = other.x;
+        let new_y = other.y;
+        let delta_x = new_x - cur_x;
+        let delta_x = if delta_x < 0 { 0 - delta_x } else { delta_x };
+        let delta_y = new_y - cur_y;
+        let delta_y = if delta_y < 0 { 0 - delta_y } else { delta_y };
+        if delta_x > delta_y {
+            delta_x
+        } else {
+            delta_y
+        }
     }
 }
 
@@ -63,8 +87,9 @@ enum Move {
     Right(i32),
 }
 
-fn moves_count() -> u64 {
-    let input = fs::read_to_string("resources/9-rope-bridge.txt").unwrap();
+fn moves_count(input: impl Into<String>) -> u64 {
+    let path = input.into();
+    let input = fs::read_to_string(path).unwrap();
     let mut input: Vec<String> = input.split("\n").map(|s| s.trim().to_owned()).collect();
     input.pop();
     let moves = map_to_moves(input);
@@ -75,40 +100,60 @@ fn moves_count() -> u64 {
         let mv = m.to_owned();
         match mv {
             Move::Up(x) => {
-                let current_position = rope.head.position;
-                let new_position = Position {
-                    x: current_position.x,
-                    y: current_position.y + x,
-                };
-                rope.head.change_position(new_position);
+                for _ in 0..*x {
+                    let current_position = rope.head.position;
+                    let new_position = Position {
+                        x: current_position.x,
+                        y: current_position.y + 1,
+                    };
+                    let tail_position = rope.tail.position;
+                    let new_tail_position = calculate_tail_position(&new_position, &tail_position);
+                    rope.tail.change_position(new_tail_position);
+                    rope.head.change_position(new_position);
+                }
             }
             Move::Left(x) => {
-                let current_position = rope.head.position;
-                let new_position = Position {
-                    x: current_position.x - x,
-                    y: current_position.y,
-                };
-                rope.head.change_position(new_position);
+                for _ in 0..*x {
+                    let current_position = rope.head.position;
+                    let new_position = Position {
+                        x: current_position.x - 1,
+                        y: current_position.y,
+                    };
+                    let tail_position = rope.tail.position;
+                    let new_tail_position = calculate_tail_position(&new_position, &tail_position);
+                    rope.head.change_position(new_position);
+                    rope.tail.change_position(new_tail_position);
+                }
             }
             Move::Down(x) => {
-                let current_position = rope.head.position;
-                let new_position = Position {
-                    x: current_position.x,
-                    y: current_position.y - x,
-                };
-                rope.head.change_position(new_position);
+                for _ in 0..*x {
+                    let current_position = rope.head.position;
+                    let new_position = Position {
+                        x: current_position.x,
+                        y: current_position.y - 1,
+                    };
+                    let tail_position = rope.tail.position;
+                    let new_tail_position = calculate_tail_position(&new_position, &tail_position);
+                    rope.head.change_position(new_position);
+                    rope.tail.change_position(new_tail_position);
+                }
             }
             Move::Right(x) => {
-                let current_position = rope.head.position;
-                let new_position = Position {
-                    x: current_position.x + x,
-                    y: current_position.y,
-                };
-                rope.head.change_position(new_position);
+                for _ in 0..*x {
+                    let current_position = rope.head.position;
+                    let new_position = Position {
+                        x: current_position.x + 1,
+                        y: current_position.y,
+                    };
+                    let tail_position = rope.tail.position;
+                    let new_tail_position = calculate_tail_position(&new_position, &tail_position);
+                    rope.head.change_position(new_position);
+                    rope.tail.change_position(new_tail_position);
+                }
             }
         }
     }
-    let count = rope.head.prevs.len();
+    let count = rope.tail.prevs.len();
     println!("Count of moves: {}", count);
     count.try_into().unwrap()
 }
@@ -123,10 +168,10 @@ fn calculate_tail_position(head_new_pos: &Position, tail_cur_pos: &Position) -> 
     let need_change_x = delta_x > 1 || delta_x < -1;
     let need_change_y = delta_y > 1 || delta_y < -1;
     if need_change_x {
-        if head_new_pos.x > 0 {
+        if head_new_pos.x > tail_cur_pos.x {
             tail_pos.x = head_new_pos.x - 1;
         } else {
-            tail_pos.x -= head_new_pos.x + 1;
+            tail_pos.x = head_new_pos.x + 1;
         }
         let is_on_the_line = head_new_pos.y == tail_cur_pos.y;
         if !is_on_the_line {
@@ -134,7 +179,7 @@ fn calculate_tail_position(head_new_pos: &Position, tail_cur_pos: &Position) -> 
         }
     }
     if need_change_y {
-        if head_new_pos.y > 0 {
+        if head_new_pos.y > tail_cur_pos.y {
             tail_pos.y = head_new_pos.y - 1;
         } else {
             tail_pos.y = head_new_pos.y + 1;
@@ -195,8 +240,12 @@ mod tests {
 
     #[test]
     fn moves_count_test() {
-        let count = moves_count();
-        assert_eq!(2000, count);
+        let count = moves_count("resources/9-rope-bridge.txt");
+        assert_eq!(6357, count);
+        let count = moves_count("resources/9-rope-bridge-test.txt");
+        assert_eq!(13, count);
+        let count = moves_count("resources/9-rope-bridge-test-2.txt");
+        assert_eq!(10, count);
     }
 
     #[test]
@@ -229,5 +278,13 @@ mod tests {
         let tail_position = Position::new(2, 0);
         let new_tail_position = calculate_tail_position(&head_position, &tail_position);
         assert_eq!(Position::new(3, 4), new_tail_position);
+    }
+
+    #[test]
+    fn count_of_moves_test() {
+        let one = Position::new(1, 3);
+        let two = Position::new(1, 1);
+        let count = one.count_moves(&two);
+        assert_eq!(2, count);
     }
 }
